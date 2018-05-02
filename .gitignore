@@ -16,5 +16,5 @@ nbactions.xml
 ./.gitattributes
 ./.gitignore
 .DS_Store
-./out
-./gen
+out/**
+gen/**
