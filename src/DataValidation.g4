@@ -106,7 +106,7 @@ NUMERIC_LITERAL
     :   '0' '.'?
     |   [1-9] [0-9]* Exponent?
     |   [1-9] [0-9]* '.' [0-9]* Exponent?
-    |   '.' [0-9]+ Exponent?
+    |   '0'? '.' [0-9]+ Exponent?
     ;
 
 STRING_LITERAL

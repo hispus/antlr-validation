@@ -7,6 +7,7 @@ public class Test
 {
     static final String[] TEST_EXPRESSIONS =
         {
+            "1 + 2. + .3 + 0.4 + 5. + 6.0 + 7.E2",
             "+2",
             "-2",
             "7+2",
