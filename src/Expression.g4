@@ -1,4 +1,4 @@
-grammar DataValidation;
+grammar Expression;
 
 // -----------------------------------------------------------------------------
 // Parser rules
@@ -14,16 +14,35 @@ expr
     |   stringLiteral
     |   booleanLiteral
     |   '(' expr ')'
-    |   <assoc=right> expr op='^' expr
+    |   <assoc=right> expr fun='^' expr
     |   '+' expr                // No operator tagged, just pass through the expression
-    |   uop='-' expr
-    |   uop='!' expr
-    |   expr op=('*'|'/'|'%') expr
-    |   expr op=('+'|'-') expr
-    |   expr op=('<=' | '>=' | '<' | '>') expr
-    |   expr op=('==' | '!=') expr
-    |   expr op='&&' expr
-    |   expr op='||' expr
+    |   fun='-' expr
+    |   fun='!' expr
+    |   expr fun=('*'|'/'|'%') expr
+    |   expr fun=('+'|'-') expr
+    |   expr fun=('<=' | '>=' | '<' | '>') expr
+    |   expr fun=('==' | '!=') expr
+    |   expr fun='&&' expr
+    |   expr fun='||' expr
+    |   fun='if' '(' test=expr ',' valueIfTrue=expr ',' valueIfFalse=expr ')'
+    |   fun='isNull' '(' expr ')'
+    |   expr '.' fun='except' '(' expr ')'
+    |   expr '.' fun='period' '(' from=expr (',' to=expr (',' fromYear=expr (',' toYear=expr )? )? )? ')'
+    |   expr '.' fun='ouLevel' '(' from=expr (',' to=expr )? ')'
+    |   expr '.' fun='ouAncestor' '(' (from=expr (',' to=expr )? )? ')'
+    |   expr '.' fun='ouDescendant' '(' (from=expr (',' to=expr )? )? ')'
+    |   expr '.' fun='ouPeer' '(' (from=expr (',' to=expr )? )? ')'
+    |   expr '.' fun='ouGroup' '(' arg=expr  (',' arg=expr? )* ')'
+    |   expr '.' fun='last'
+    |   expr '.' fun='count' ('(' 'last' last=expr ')')?
+    |   expr '.' fun='sum' ('(' 'last' last=expr ')')?
+    |   expr '.' fun='max' ('(' 'last' last=expr ')')?
+    |   expr '.' fun='min' ('(' 'last' last=expr ')')?
+    |   expr '.' fun='average' ('(' 'last' last=expr ')')?
+    |   expr '.' fun='stddev' ('(' 'last' last=expr ')')?
+    |   expr '.' fun='variance' ('(' 'last' last=expr ')')?
+    |   expr '.' fun='median' ('(' 'last' last=expr ')')?
+    |   expr '.' fun='percentile' '(' arg=expr ')' ('(' 'last' last=expr ')')?
     ;
 
 numericLiteral
@@ -46,12 +65,11 @@ dimensionItemObject
     ;
 
 dataElementOperand
-    :   '#{' UID '.' UID '}'
-    |   '#{' UID '}'
+    :   '#{' UID ('.' UID)? '}'
     ;
 
 programDataElement
-    :   'D{' UID '.' UID '}'
+    :   'D{' UID ('.' UID)? '}'
     ;
 
 programTrackedEntityAttribute
@@ -97,6 +115,28 @@ EQ  :   '==';
 NE  :   '!=';
 AND :   '&&';
 OR  :   '||';
+
+PERIOD: 'period';
+OU_LEVEL: 'ouLevel';
+OU_ANCESTOR : 'ouAncestor';
+OU_DESCENDANT: 'ouDescendant';
+OU_PEER: 'ouPeer';
+OU_GROUP: 'ouGroup';
+
+SUM: 'sum';
+AVERAGE: 'average';
+LAST: 'last';
+COUNT: 'count';
+STDDEV: 'stddev';
+VARIANCE: 'variance';
+MIN: 'min';
+MAX: 'max';
+MEDIAN: 'median';
+PERCENTILE: 'percentile';
+
+IF: 'if';
+IS_NULL: 'isNull';
+EXCEPT: 'except';
 
 // -----------------------------------------------------------------------------
 // Lexer rules

@@ -48,7 +48,9 @@ public class Test
             "1.0E-100",
             "1~",
             "1x",
-            "1 * "
+            "1 * ",
+            "#{A0000000001}.period(-1)",
+            "#{A0000000001}.average.period(-3,3,-4,0) + 2 * #{A0000000001}.stddev.period(-3,3,-4,0)"
         };
 
     private static final HashMap<String, Double> VALUE_MAP = new HashMap<String, Double>()
@@ -78,7 +80,7 @@ public class Test
 
         CharStream input = CharStreams.fromString( expr ); // Form an ANTLR lexer input stream
 
-        DataValidationLexer lexer = new DataValidationLexer( input ); // Create a lexer for the input
+        ExpressionLexer lexer = new ExpressionLexer( input ); // Create a lexer for the input
         lexer.removeErrorListeners(); // Remove default lexer error listener (prints to console)
         lexer.addErrorListener( errorListener ); // Add our own error listener so we can collect the errors
 
@@ -92,7 +94,7 @@ public class Test
             return;
         }
 
-        DataValidationParser parser = new DataValidationParser( tokens ); // Create a parser for the token stream
+        ExpressionParser parser = new ExpressionParser( tokens ); // Create a parser for the token stream
         parser.removeErrorListeners(); // Remove default parser error listener (prints to console)
         parser.addErrorListener( errorListener ); // Add our own error listener so we can collect the errors
 
@@ -106,9 +108,9 @@ public class Test
             return;
         }
 
-        DataValidationVisitor prepass = new DataValidationEvalVisitor();
+        ExpressionVisitor prepass = new ExpressionEvalVisitor();
 
-        DataValidationVisitor eval = new DataValidationEvalVisitor( VALUE_MAP, CONSTANT_MAP );
+        ExpressionVisitor eval = new ExpressionEvalVisitor( VALUE_MAP, CONSTANT_MAP );
 
         try
         {
@@ -118,7 +120,7 @@ public class Test
 
             System.out.println( expr + " = (" + ( result == null ? "null)" : result.getClass().getSimpleName() + ") " + result.toString() ) );
         }
-        catch ( RuntimeException ex )
+        catch ( ParsingException ex )
         {
             System.out.println( expr + " => " + ex.getMessage() );
         }
