@@ -1,57 +1,16 @@
 public class Range
 {
-    private Integer from = null;
+    private int from = 0;
 
-    private Integer to = null;
+    private int to = 0;
 
     public Range()
     {
     }
 
     // -------------------------------------------------------------------------
-    // hashCode, equals and toString
+    // toString
     // -------------------------------------------------------------------------
-
-    @Override
-    public int hashCode()
-    {
-        final int prime = 31;
-        int result = 1;
-
-        result = prime * result + ( ( from == null ) ? 0 : from );
-        result = prime * result + ( ( to == null ) ? 0 : to );
-
-        return result;
-    }
-
-    @Override
-    public boolean equals( Object object )
-    {
-        if ( this == object )
-        {
-            return true;
-        }
-
-        if ( object == null )
-        {
-            return false;
-        }
-
-        if ( getClass() != object.getClass() )
-        {
-            return false;
-        }
-
-        Range other = (Range) object;
-
-        if ( from != other.from
-            || to != other.to )
-        {
-            return false;
-        }
-
-        return true;
-    }
 
     @Override
     public String toString()

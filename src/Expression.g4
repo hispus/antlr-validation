@@ -5,6 +5,58 @@ grammar Expression;
 // -----------------------------------------------------------------------------
 
 expr
+    :   '(' expr ')'
+
+    // Logical functions
+
+    |   expr '.' fun='if' a2
+    |   expr '.' fun='except' a1
+    |   expr '.' fun='isNull' a1
+    |   fun='coalesce' a1_n
+
+    // Aggregation functions
+
+    |   expr '.' fun='sum' a0
+    |   expr '.' fun='max' a0
+    |   expr '.' fun='min' a0
+    |   expr '.' fun='average' a0
+    |   expr '.' fun='stddev' a0
+    |   expr '.' fun='variance' a0
+    |   expr '.' fun='median' a0
+    |   expr '.' fun='last' a0_1
+    |   expr '.' fun='percentile' a1
+    |   expr '.' fun='rankHigh' a1
+    |   expr '.' fun='rankLow' a1
+    |   expr '.' fun='rankPercentile' a1
+
+    // Aggregation scope functions
+
+    |   expr '.' fun='period' a1_n
+    |   expr '.' fun='ouLevel' a1_2
+    |   expr '.' fun='ouAncestor' a1_2
+    |   expr '.' fun='ouDescendant' a1_2
+    |   expr '.' fun='ouPeer' a1_2
+    |   expr '.' fun='ouGroup' a1_n
+
+    // Operators (in precidence order)
+
+    |   <assoc=right> expr fun='^' expr
+    |   fun=('-'|'!') expr
+    |   '+' expr // (Doesn't change the expression)
+    |   expr fun=('*'|'/'|'%') expr
+    |   expr fun=('+'|'-') expr
+    |   expr fun=('<=' | '>=' | '<' | '>') expr
+    |   expr fun=('==' | '!=') expr
+    |   expr fun='&&' expr
+    |   expr fun='||' expr
+
+    // Other
+
+    |   value
+    |   programIndicatorExpr
+    ;
+
+value
     :   dimensionItemObject
     |   orgUnitCount
     |   reportingRate
@@ -13,36 +65,70 @@ expr
     |   numericLiteral
     |   stringLiteral
     |   booleanLiteral
-    |   '(' expr ')'
-    |   <assoc=right> expr fun='^' expr
-    |   '+' expr                // No operator tagged, just pass through the expression
-    |   fun='-' expr
-    |   fun='!' expr
-    |   expr fun=('*'|'/'|'%') expr
-    |   expr fun=('+'|'-') expr
-    |   expr fun=('<=' | '>=' | '<' | '>') expr
-    |   expr fun=('==' | '!=') expr
-    |   expr fun='&&' expr
-    |   expr fun='||' expr
-    |   fun='if' '(' test=expr ',' valueIfTrue=expr ',' valueIfFalse=expr ')'
-    |   fun='isNull' '(' expr ')'
-    |   expr '.' fun='except' '(' expr ')'
-    |   expr '.' fun='period' '(' from=expr (',' to=expr (',' fromYear=expr (',' toYear=expr )? )? )? ')'
-    |   expr '.' fun='ouLevel' '(' from=expr (',' to=expr )? ')'
-    |   expr '.' fun='ouAncestor' '(' (from=expr (',' to=expr )? )? ')'
-    |   expr '.' fun='ouDescendant' '(' (from=expr (',' to=expr )? )? ')'
-    |   expr '.' fun='ouPeer' '(' (from=expr (',' to=expr )? )? ')'
-    |   expr '.' fun='ouGroup' '(' arg=expr  (',' arg=expr? )* ')'
-    |   expr '.' fun='last'
-    |   expr '.' fun='count' ('(' 'last' last=expr ')')?
-    |   expr '.' fun='sum' ('(' 'last' last=expr ')')?
-    |   expr '.' fun='max' ('(' 'last' last=expr ')')?
-    |   expr '.' fun='min' ('(' 'last' last=expr ')')?
-    |   expr '.' fun='average' ('(' 'last' last=expr ')')?
-    |   expr '.' fun='stddev' ('(' 'last' last=expr ')')?
-    |   expr '.' fun='variance' ('(' 'last' last=expr ')')?
-    |   expr '.' fun='median' ('(' 'last' last=expr ')')?
-    |   expr '.' fun='percentile' '(' arg=expr ')' ('(' 'last' last=expr ')')?
+    ;
+
+programIndicatorExpr
+    :   'V{' programIndicatorVariable '}'
+    |   'd2:' programIndicatorFunction
+    ;
+
+programIndicatorVariable
+    :   var='event_date'
+    |   var='due_date'
+    |   var='incident_date'
+    |   var='enrollment_date'
+    |   var='enrollment_status'
+    |   var='current_date'
+    |   var='value_count'
+    |   var='zero_pos_value_count'
+    |   var='event_count'
+    |   var='enrollment_count'
+    |   var='tei_count'
+    |   var='program_stage_name'
+    |   var='program_stage_id'
+    |   var='reporting_period_start'
+    |   var='reporting_period_end'
+    ;
+
+programIndicatorFunction
+    :   fun='hasValue' a1
+    |   fun='minutesBetween' a2
+    |   fun='daysBetween' a2
+    |   fun='weeksBetween' a2
+    |   fun='monthsBetween' a2
+    |   fun='yearsBetween' a2
+    |   fun='condition' a3
+    |   fun='zing' a1
+    |   fun='oizp' a1
+    |   fun='zpvc' a1_n
+    ;
+
+a0  // 0 arguments
+    :   '(' ')'
+    ;
+
+a0_1 // 0 - 1 arguments
+    :   '(' expr? ')'
+    ;
+
+a1  // 1 argument
+    :   '(' expr ')'
+    ;
+
+a1_2 // 1 - 2 arguments
+    :   '(' expr (',' expr? )? ')'
+    ;
+
+a1_n // 1 - n arguments
+    :   '(' expr (',' arg=expr? )* ')'
+    ;
+
+a2  // 2 arguments
+    :   '(' expr ',' expr ')'
+    ;
+
+a3  // 3 arguments
+    :   '(' expr ',' expr ',' expr ')'
     ;
 
 numericLiteral
@@ -100,6 +186,8 @@ days
 // Assign token names to parser symbols
 // -----------------------------------------------------------------------------
 
+// Operators
+
 POWER : '^';
 MINUS : '-';
 PLUS :  '+';
@@ -116,12 +204,14 @@ NE  :   '!=';
 AND :   '&&';
 OR  :   '||';
 
-PERIOD: 'period';
-OU_LEVEL: 'ouLevel';
-OU_ANCESTOR : 'ouAncestor';
-OU_DESCENDANT: 'ouDescendant';
-OU_PEER: 'ouPeer';
-OU_GROUP: 'ouGroup';
+// Logical functions
+
+IF: 'if';
+EXCEPT: 'except';
+IS_NULL: 'isNull';
+COALESCE: 'coalesce';
+
+// Aggregation functions
 
 SUM: 'sum';
 AVERAGE: 'average';
@@ -133,20 +223,57 @@ MIN: 'min';
 MAX: 'max';
 MEDIAN: 'median';
 PERCENTILE: 'percentile';
+RANK_HIGH: 'rankHigh';
+RANK_LOW: 'rankLow';
+RANK_PERCENTILE: 'rankPercentile';
 
-IF: 'if';
-IS_NULL: 'isNull';
-EXCEPT: 'except';
+// Aggregation scope functions
+
+PERIOD: 'period';
+OU_LEVEL: 'ouLevel';
+OU_ANCESTOR : 'ouAncestor';
+OU_DESCENDANT: 'ouDescendant';
+OU_PEER: 'ouPeer';
+OU_GROUP: 'ouGroup';
+
+// Program indicator variables
+
+EVENT_DATE :   'event_date';
+DUE_DATE : 'due_date';
+INCIDENT_DATE : 'incident_date';
+ENROLLMENT_DATE : 'enrollment_date';
+ENROLLMENT_STATUS : 'enrollment_status';
+CURRENT_STATUS : 'current_date';
+VALUE_COUNT : 'value_count';
+ZERO_POS_VALUE_COUNT : 'zero_pos_value_count';
+EVENT_COUNT : 'event_count';
+ENROLLMENT_COUNT : 'enrollment_count';
+TEI_COUNT : 'tei_count';
+PROGRAM_STAGE_NAME : 'program_stage_name';
+PROGRAM_STAGE_ID : 'program_stage_id';
+REPORTING_PERIOD_START : 'reporting_period_start';
+REPORTING_PERIOD_END : 'reporting_period_end';
+
+// Program indicator functions
+
+HAS_VALUE : 'hasValue';
+MINUTES_BETWEEN : 'minutesBetween';
+DAYS_BETWEEN : 'daysBetween';
+WEEKS_BETWEEN : 'weeksBetween';
+MONTHS_BETWEEN : 'monthsBetween';
+YEARS_BETWEEN : 'yearsBetween';
+CONDITION : 'condition';
+ZING : 'zing';
+OIZP : 'oizp';
+ZPVC :  'zpvc';
 
 // -----------------------------------------------------------------------------
 // Lexer rules
 // -----------------------------------------------------------------------------
 
 NUMERIC_LITERAL
-    :   '0' '.'?
-    |   [1-9] [0-9]* Exponent?
-    |   [1-9] [0-9]* '.' [0-9]* Exponent?
-    |   '0'? '.' [0-9]+ Exponent?
+    :   ('0' | [1-9] [0-9]*) ('.' [0-9]*)? Exponent?
+    |   '.' [0-9]+ Exponent?
     ;
 
 STRING_LITERAL

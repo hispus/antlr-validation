@@ -26,6 +26,7 @@ public class Test
             "\"abc\" + 123",
             "123 + \"abc\"",
             "\"abc\\t\\008 \\\"Hello\\\"\"",
+            "\"two\\nlines\"",
             "2 < 2",
             "2 <= 2",
             "1<=5",
@@ -49,8 +50,17 @@ public class Test
             "1~",
             "1x",
             "1 * ",
+            "(2>3).if(4,5)",
+            "(3>2).if(4,5)",
+            "5.except(2>3)",
+            "5.except(3>2)",
             "#{A0000000001}.period(-1)",
-            "#{A0000000001}.average.period(-3,3,-4,0) + 2 * #{A0000000001}.stddev.period(-3,3,-4,0)"
+            "#{A0000000001}.period(-3,3,-4,-1,-3,-2).average() + 2 * #{A0000000001}.period(-3,3,-4,-1,-3,-2).stddev()",
+            "#{A0000000001}.period(-10,-1).last(3).sum()",
+            "#{A0000000001}.period(-10,-1).last()",
+            "#{A0000000001}.period(-10,-1).last().sum()",
+            "#{A0000000001}.ouDescendant(2).period(-10,-1).sum()",
+            "#{A0000000001}.ouDescendant(2).last()",
         };
 
     private static final HashMap<String, Double> VALUE_MAP = new HashMap<String, Double>()
@@ -108,15 +118,15 @@ public class Test
             return;
         }
 
-        ExpressionVisitor prepass = new ExpressionEvalVisitor();
+        ExpressionVisitor checker = new ExpressionChecker();
 
-        ExpressionVisitor eval = new ExpressionEvalVisitor( VALUE_MAP, CONSTANT_MAP );
+        ExpressionChecker evaluator = new ExpressionEvaluator( VALUE_MAP, CONSTANT_MAP );
 
         try
         {
-            prepass.visit( tree ); // For type checking
+            checker.visit( tree ); // For type checking and nested function compatibility
 
-            Object result = eval.visit( tree );
+            Object result = evaluator.visit( tree );
 
             System.out.println( expr + " = (" + ( result == null ? "null)" : result.getClass().getSimpleName() + ") " + result.toString() ) );
         }
