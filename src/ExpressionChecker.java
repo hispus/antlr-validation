@@ -263,11 +263,11 @@ public class ExpressionChecker extends ExpressionBaseVisitor<Object>
             case ExpressionParser.RANK_LOW:
                 return rankLow( getDoubles( ctx ), ctx );
 
-            case ExpressionParser.PERCENTILE_HIGH:
+            case ExpressionParser.RANK_PERCENTILE_HIGH:
                 double[] vals = getDoubles( ctx );
                 return vals.length == 0 ? 0 : (int)Math.round( 100.0 * rankHigh( vals, ctx ) / vals.length );
 
-            case ExpressionParser.PERCENTILE_LOW:
+            case ExpressionParser.RANK_PERCENTILE_LOW:
                 double[] values = getDoubles( ctx );
                 return values.length == 0 ? 0 : (int)Math.round( 100.0 * rankLow( values, ctx ) / values.length );
 

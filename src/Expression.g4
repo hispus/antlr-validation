@@ -27,8 +27,8 @@ expr
     |   expr '.' fun='percentile' a1
     |   expr '.' fun='rankHigh' a1
     |   expr '.' fun='rankLow' a1
-    |   expr '.' fun='percentileHigh' a1
-    |   expr '.' fun='percentileLow' a1
+    |   expr '.' fun='rankPercentileHigh' a1
+    |   expr '.' fun='rankPpercentileLow' a1
 
     // Aggregation scope functions
 
@@ -226,8 +226,8 @@ MEDIAN: 'median';
 PERCENTILE: 'percentile';
 RANK_HIGH: 'rankHigh';
 RANK_LOW: 'rankLow';
-PERCENTILE_HIGH: 'percentileHigh';
-PERCENTILE_LOW: 'percentileLow';
+RANK_PERCENTILE_HIGH: 'rankPercentileHigh';
+RANK_PERCENTILE_LOW: 'rankPercentileLow';
 
 // Aggregation scope functions
 
