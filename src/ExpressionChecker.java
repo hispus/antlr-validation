@@ -21,9 +21,7 @@ public class ExpressionChecker extends ExpressionBaseVisitor<Object>
     //TODO: allow both numeric and String values in valueMap
     //TODO: implicit type conversions when comparing/concatenating numeric with String
     //TODO: implement missingValueStrategy
-
-    private Comparator<Object> objectComparator = new ObjectComparator();
-
+    
     private final static Double ONE = Double.valueOf( 1. );
 
     private int orgUnitLevel = 3; // Reporting orgUnit level for demonstration
@@ -263,10 +261,13 @@ public class ExpressionChecker extends ExpressionBaseVisitor<Object>
             case ExpressionParser.RANK_LOW:
                 return rankLow( getDoubles( ctx ), ctx );
 
-            case ExpressionParser.RANK_PERCENTILE:
-                double[] values = getDoubles( ctx );
-                return values.length == 0 ? 0 : (int)Math.round( 100.0 * rankHigh( values, ctx ) / values.length );
+            case ExpressionParser.RANK_PERCENTILE_HIGH:
+                double[] vals = getDoubles( ctx );
+                return vals.length == 0 ? 0 : (int)Math.round( 100.0 * rankHigh( vals, ctx ) / vals.length );
 
+            case ExpressionParser.RANK_PERCENTILE_LOW:
+                double[] values = getDoubles( ctx );
+                return values.length == 0 ? 0 : (int)Math.round( 100.0 * rankLow( values, ctx ) / values.length );
 
             // -----------------------------------------------------------------
             // Aggregation scope functions
@@ -279,16 +280,16 @@ public class ExpressionChecker extends ExpressionBaseVisitor<Object>
                 return iterateOuLevel( ctx );
 
             case ExpressionParser.OU_ANCESTOR:
-                return iterateOuLevel( ctx );
+                return ouAncestor( ctx );
 
             case ExpressionParser.OU_DESCENDANT:
-                return iterateOuLevel( ctx );
+                return iterateOuDescendant( ctx );
 
             case ExpressionParser.OU_PEER:
-                return iterateOuLevel( ctx );
+                return iterateOuPeer( ctx );
 
             case ExpressionParser.OU_GROUP:
-                return iterateOuLevel( ctx );
+                return iterateOuGroup( ctx );
 
             default: // (Shouldn't happen, mismatch between expression grammer and here.)
                 throw new ParsingException( "fun=" + ctx.fun.getType() + " not recognized." );
@@ -356,7 +357,7 @@ public class ExpressionChecker extends ExpressionBaseVisitor<Object>
     }
 
     /**
-     * Return the first non-null argument.
+     * Returns the first non-null argument.
      * <p/>
      * When checking the expression, evaluate every argument. For
      * actual expression evaluation (not here) this can be optimized so that
@@ -380,6 +381,17 @@ public class ExpressionChecker extends ExpressionBaseVisitor<Object>
         return returnVal;
     }
 
+    /**
+     * Returns the high rank of the argument within the set of multiple
+     * values. 1 is the rank of the highest value, and n is the rank of
+     * the lowest value, where n is the number of values.
+     * <p/>
+     * For example, if the multiple values are 60, 50, 50, 40, then the rankHigh
+     * value of 60, 50, 50, or 40 would be 1, 2, 2, or 4.
+     * @param values the values to rank amongst.
+     * @param ctx parsing context with a single argument of the value to rank.
+     * @return the rank of the argument within the multiple values.
+     */
     protected Integer rankHigh( double[] values, ExpressionParser.ExprContext ctx )
     {
         double test = castDouble( visit( ctx.a1().expr() ) );
@@ -397,6 +409,17 @@ public class ExpressionChecker extends ExpressionBaseVisitor<Object>
         return rankHigh;
     }
 
+    /**
+     * Returns the low rank of the argument within the set of multiple
+     * values. n is the rank of the highest value, and 1 is the rank of
+     * the lowest value, where n is the number of values.
+     * <p/>
+     * For example, if the multiple values are 60, 50, 50, 40, then the rankLow
+     * value of 60, 50, 50, or 40 would be 4, 3, 3, or 1.
+     * @param values the values to rank amongst.
+     * @param ctx parsing context with a single argument of the value to rank.
+     * @return the rank of the argument within the multiple values.
+     */
     protected Integer rankLow( double[] values, ExpressionParser.ExprContext ctx )
     {
         double test = castDouble( visit( ctx.a1().expr() ) );
@@ -416,6 +439,35 @@ public class ExpressionChecker extends ExpressionBaseVisitor<Object>
         return rankLow;
     }
 
+    /**
+     * Iterates through periods according to arguments. There must be at least
+     * one argument and there may be any greater number. The arguments are
+     * interpreted as follows:
+     * <ul>
+     *     <li>1. The number of periods before (negative) or after (positive)
+     *     the current period. If there is only one argument, then only a
+     *     single value is returned, not multiple values</li>
+     *     <li>2. If a second argument is present, the first argument is the
+     *     offset (negative for past, positive for future) for the start of
+     *     a range of periods, and the second argument is the offset for the
+     *     end of the period range. Multiple values are returned and must be
+     *     processed by an aggregtion funciton (even if the start and end
+     *     offsets are the same.) </li>
+     *     <li>3. If a third argument is present, it is an offset in years
+     *     (negative for past, positive for future). The period(s) specified by
+     *     the first two arguments are shifted this number of years into the
+     *     past or the future.</li>
+     *     <li>4. If a fourth argument is present, the third and forth
+     *     arguments define the offsets for the start and end of a range of
+     *     years in which the periods from the first two arguments are
+     *     evaluated.</li>
+     *     <li>5+. If more than four arguments are present, each subsequent
+     *     four arguments specify an additional range of periods to evaluate
+     *     in addition to the range specified by arguments 1-4.</li>
+     * </ul>
+     * @param ctx the parsing context.
+     * @return a single value (1 argument) or multiple values (>1 argument).
+     */
     protected Object iteratePeriods( ExpressionParser.ExprContext ctx )
     {
         String savedPeriod = currentPeriod;
@@ -456,11 +508,20 @@ public class ExpressionChecker extends ExpressionBaseVisitor<Object>
         return returnVal;
     }
 
-    protected Object periodShiftValue( ExpressionParser.ExprContext ctx, String period, int periodShift, int yearShift )
+    /**
+     * Evaluates an expression within a period shifted relative to a base period.
+     *
+     * @param ctx the parsing context.
+     * @param basePeriod the base period to shift from.
+     * @param periodShift the number of periods to shift from the base.
+     * @param yearShift the number of years to shift from the base.
+     * @return the value of the expression shifted in time.
+     */
+    protected Object periodShiftValue( ExpressionParser.ExprContext ctx, String basePeriod, int periodShift, int yearShift )
     {
         //TODO: change to real code for DHIS2 periods. For this prototype, just shifts months.
 
-        int months = Integer.parseInt( period.substring( 0, 4 ) ) * 12 + Integer.parseInt( period.substring( 4 ) ) - 1
+        int months = Integer.parseInt( basePeriod.substring( 0, 4 ) ) * 12 + Integer.parseInt( basePeriod.substring( 4 ) ) - 1
             + periodShift + ( yearShift * 12 );
 
         int m = ( months % 12 ) + 1;
@@ -470,6 +531,12 @@ public class ExpressionChecker extends ExpressionBaseVisitor<Object>
         return visit( ctx.expr( 0 ) );
     }
 
+    /**
+     * Interates over all orgUnits in the system at a given level.
+     *
+     * @param ctx the parsing context, containing the orgUnit level.
+     * @return the multiple values from the orgUnits.
+     */
     protected Object iterateOuLevel( ExpressionParser.ExprContext ctx )
     {
         //TODO: change to real DHIS2 orgUnit logic.
@@ -486,22 +553,33 @@ public class ExpressionChecker extends ExpressionBaseVisitor<Object>
         return values;
     }
 
-    protected Object iterateOuAncestor( ExpressionParser.ExprContext ctx )
+    /**
+     * Returns the expression value, evaluated at the orgUnit's ancestor.
+     *
+     * @param ctx the parsing context, containing the ancestor level
+     *            (1=parent, 2=grandparent, etc.)
+     * @return the single value from the ancestor.
+     */
+    protected Object ouAncestor( ExpressionParser.ExprContext ctx )
     {
         //TODO: change to real DHIS2 orgUnit logic.
 
         String savedOrgUnit = currentOrgUnit;
 
-        MultiValues values = new MultiValues();
-
-        values.addValue( orgUnitValue( ctx, "ABC" ) );
-        values.addValue( orgUnitValue( ctx, "DEF" ) );
+        Object value = orgUnitValue( ctx, "ABC" );
 
         currentOrgUnit = savedOrgUnit;
 
-        return values;
+        return value;
     }
 
+    /**
+     * Interates over the current orgUnit's descendants.
+     *
+     * @param ctx the parsing context, containing the descendant level
+     *            (1=chilren, 2=grandchildren, etc.)
+     * @return the multiple values from the orgUnits.
+     */
     protected Object iterateOuDescendant( ExpressionParser.ExprContext ctx )
     {
         //TODO: change to real DHIS2 orgUnit logic.
@@ -518,6 +596,21 @@ public class ExpressionChecker extends ExpressionBaseVisitor<Object>
         return values;
     }
 
+    /**
+     * Interates over the current orgUnit's peers.
+     * <ol>
+     *     <li>The number of times removed from the current orgUnit
+     *     (0=self, 1=siblings, 2=cousins but not siblings, etc.)</li>
+     *     <li>If two arguments are present, the two are a starting
+     *     and ending range of times removed. For example, (0,1) is
+     *     self plus all siblings (all the parent's children), and (0,2)
+     *     is self, all siblings and all cousins (all the grandparent's
+     *     grandchildren).</li>
+     * </ol>
+     *
+     * @param ctx the parsing context, one or two arguments.
+     * @return the multiple values from the orgUnits.
+     */
     protected Object iterateOuPeer( ExpressionParser.ExprContext ctx )
     {
         //TODO: change to real DHIS2 orgUnit logic.
@@ -534,6 +627,12 @@ public class ExpressionChecker extends ExpressionBaseVisitor<Object>
         return values;
     }
 
+    /**
+     * Iterates over one or more orgUnit groups.
+     *
+     * @param ctx the parsing context, with the group(s) to iterate over.
+     * @return the multiple values from the orgUnits.
+     */
     protected Object iterateOuGroup( ExpressionParser.ExprContext ctx )
     {
         //TODO: change to real DHIS2 orgUnit logic.
@@ -550,6 +649,13 @@ public class ExpressionChecker extends ExpressionBaseVisitor<Object>
         return values;
     }
 
+    /**
+     * Returns the expression value, evaluated at the given orgUnit.
+     *
+     * @param ctx
+     * @param orgUnit
+     * @return
+     */
     protected Object orgUnitValue( ExpressionParser.ExprContext ctx, String orgUnit )
     {
         currentOrgUnit = orgUnit;
@@ -819,34 +925,26 @@ public class ExpressionChecker extends ExpressionBaseVisitor<Object>
         }
     }
 
-
     private int compare( ExpressionParser.ExprContext ctx )
     {
-        return objectComparator.compare( visit( ctx.expr( 0 ) ), visit( ctx.expr( 1 ) ) );
-    }
+        Object o1 = visit( ctx.expr( 0 ) );
+        Object o2 = visit( ctx.expr( 1 ) );
 
-    private class ObjectComparator
-        implements Comparator<Object>
-    {
-        @Override
-        public int compare( Object o1, Object o2 )
+        if ( o1.getClass() == Double.class )
         {
-            if ( o1.getClass() == Double.class )
-            {
-                return ( (Double) o1).compareTo( castDouble( o2 ) );
-            }
-            else if ( o1.getClass() == String.class )
-            {
-                return ( (String) o1).compareTo( castString( o2 ) );
-            }
-            else if ( o1.getClass() == Boolean.class )
-            {
-                return ( (Boolean) o1).compareTo( castBoolean( o2 ) );
-            }
-            else // (Shouldn't happen)
-            {
-                throw new ParsingException( "magnitude of " + o1.getClass().getSimpleName() + " cannot be compared at: '" + o2.toString() + "'" );
-            }
+            return ( (Double) o1).compareTo( castDouble( o2 ) );
+        }
+        else if ( o1.getClass() == String.class )
+        {
+            return ( (String) o1).compareTo( castString( o2 ) );
+        }
+        else if ( o1.getClass() == Boolean.class )
+        {
+            return ( (Boolean) o1).compareTo( castBoolean( o2 ) );
+        }
+        else // (Shouldn't happen)
+        {
+            throw new ParsingException( "magnitude of " + o1.getClass().getSimpleName() + " cannot be compared at: '" + o2.toString() + "'" );
         }
     }
 }
