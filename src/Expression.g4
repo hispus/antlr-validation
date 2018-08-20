@@ -27,7 +27,8 @@ expr
     |   expr '.' fun='percentile' a1
     |   expr '.' fun='rankHigh' a1
     |   expr '.' fun='rankLow' a1
-    |   expr '.' fun='rankPercentile' a1
+    |   expr '.' fun='percentileHigh' a1
+    |   expr '.' fun='percentileLow' a1
 
     // Aggregation scope functions
 
@@ -225,7 +226,8 @@ MEDIAN: 'median';
 PERCENTILE: 'percentile';
 RANK_HIGH: 'rankHigh';
 RANK_LOW: 'rankLow';
-RANK_PERCENTILE: 'rankPercentile';
+PERCENTILE_HIGH: 'percentileHigh';
+PERCENTILE_LOW: 'percentileLow';
 
 // Aggregation scope functions
 
@@ -238,7 +240,7 @@ OU_GROUP: 'ouGroup';
 
 // Program indicator variables
 
-EVENT_DATE :   'event_date';
+EVENT_DATE : 'event_date';
 DUE_DATE : 'due_date';
 INCIDENT_DATE : 'incident_date';
 ENROLLMENT_DATE : 'enrollment_date';
